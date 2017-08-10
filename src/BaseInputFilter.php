@@ -36,6 +36,11 @@ class BaseInputFilter implements
     protected $invalidInputs;
 
     /**
+     * @var bool
+     */
+    protected $required = true;
+
+    /**
      * @var null|string[] Input names
      */
     protected $validationGroup;
@@ -181,7 +186,7 @@ class BaseInputFilter implements
         if ($data instanceof Traversable) {
             $data = ArrayUtils::iteratorToArray($data);
         }
-        if (! is_array($data)) {
+        if (! is_array($data) && $this->isRequired() && null !== $data) {
             throw new Exception\InvalidArgumentException(sprintf(
                 '%s expects an array or Traversable argument; received %s',
                 __METHOD__,
@@ -194,6 +199,24 @@ class BaseInputFilter implements
     }
 
     /**
+     * @param  bool $required
+     * @return Input
+     */
+    public function setRequired($required)
+    {
+        $this->required = (bool) $required;
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isRequired()
+    {
+        return $this->required;
+    }
+
+    /**
      * Is the data set valid?
      *
      * @param  mixed|null $context
@@ -203,6 +226,10 @@ class BaseInputFilter implements
     public function isValid($context = null)
     {
         if (null === $this->data) {
+            if (! $this->isRequired()) {
+                return true;
+            }
+
             throw new Exception\RuntimeException(sprintf(
                 '%s: no data present to validate!',
                 __METHOD__
@@ -505,7 +532,7 @@ class BaseInputFilter implements
                 $input->clearRawValues();
             }
 
-            if (! array_key_exists($name, $this->data)) {
+            if ((! $this->isRequired() && null === $this->data) || ! array_key_exists($name, $this->data)) {
                 // No value; clear value in this input
                 if ($input instanceof InputFilterInterface) {
                     $input->setData([]);
@@ -552,6 +579,10 @@ class BaseInputFilter implements
     public function getUnknown()
     {
         if (null === $this->data) {
+            if (! $this->isRequired()) {
+                return [];
+            }
+
             throw new Exception\RuntimeException(sprintf(
                 '%s: no data present!',
                 __METHOD__
